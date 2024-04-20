@@ -85,6 +85,7 @@ function load_faulty_dev()
     mknod /dev/${faulty_device} c $major 0
     echo "Change access mode to ${mode}"
     chmod $mode  /dev/${faulty_device}
+    echo "module: $faulty_module loaded."
 }
 
 function unload_faulty_dev()
@@ -98,41 +99,39 @@ function unload_faulty_dev()
 }
 
 
-
-if [ ${#} -ne 1 ]; then
+if test ${#} -ne 1
+then
     echo "Wrong number of parameters"
     exit 1
 fi
 
-case ${1} in 
+case ${1} in
 "start")
     echo "Running load ldd drivers daemon"
     echo "Load scull module, exit on failure"
     insmod /lib/modules/$(uname -r)/extra/$scull_module.ko $* || exit 1
     echo "Get the major number (allocated with allocate_chrdev_region) from /proc/devices"
-    # retrieve major number
     major=$(awk "\$2==\"$scull_module\" {print \$1}" /proc/devices)
     echo "scull major number is: ${major}"
 
-    # load scull device 
+    # load scull device
     load_scull_dev "$major"
 
     echo "Load faulty module, exit on failure"
     insmod /lib/modules/$(uname -r)/extra/$faulty_module.ko $* || exit 1
     echo "Get the major number (allocated with allocate_chrdev_region) from /proc/devices"
-    # retrieve major number
     major=$(awk "\$2==\"$faulty_module\" {print \$1}" /proc/devices)
-    echo "scull major number is: ${major}"
+    echo "faulty major number is: ${major}"
 
-    # load scull device 
+    # load faulty device
     load_faulty_dev "$major"
 
-    # modprobe of hello world
-    cd /lib/modules/$(unmae -r)/extra/
+    # basic modprobe of hello driver
+    cd /lib/modules/$(uname -r)/extra/
     modprobe $hello_module.ko $* || exit 1
-    
+
     ;;
-"stop") 
+"stop")
     echo "Stopping load ldd drivers daemon"
 
     # unload scull device
@@ -143,12 +142,12 @@ case ${1} in
     
     # basic rmmod of hello driver
     rmmod /lib/modules/$(uname -r)/extra/$hello_module.ko || exit 1
+
     ;;
-*) 
+*)
     echo "Invalid option \"${1}\""
     exit 2
     ;;
-
 esac
 
 exit 0
